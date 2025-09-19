@@ -2,11 +2,19 @@
 
 <cite>
 **本文档中引用的文件**  
-- [vertex.ts](file://src/core/api/providers/vertex.ts)
-- [index.ts](file://src/core/api/index.ts)
-- [gemini.ts](file://src/core/api/providers/gemini.ts)
-- [api.ts](file://src/shared/api.ts)
+- [vertex.ts](file://src/core/api/providers/vertex.ts) - *新增于最近提交*
+- [index.ts](file://src/core/api/index.ts) - *修改于最近提交*
+- [gemini.ts](file://src/core/api/providers/gemini.ts) - *修改于最近提交*
+- [api.ts](file://src/shared/api.ts) - *修改于最近提交*
 </cite>
+
+## 更新摘要
+**已更改内容**  
+- 更新了配置指南，明确指出`vertexRegion`支持`global`区域选项
+- 扩展了支持的模型列表，包含最新的Gemini模型，如`gemini-2.5-flash-lite-preview-06-17`
+- 更新了代码示例中的流程图，以反映对`thinkingBudgetTokens`的处理逻辑
+- 在错误处理与限制部分增加了对`global`区域的说明
+- 修正了与标准Gemini API区别的描述，以反映最新的认证和配置差异
 
 ## 目录
 1. [简介](#简介)
@@ -26,7 +34,7 @@
 要成功配置并使用Cline中的Google Vertex AI API，必须正确设置以下环境变量和配置项：
 
 - **Vertex AI 项目ID (`vertexProjectId`)**：这是Google Cloud项目中Vertex AI服务的唯一标识符。必须在配置中明确指定，否则初始化将失败。
-- **Vertex AI 区域 (`vertexRegion`)**：指定Vertex AI服务所在的地理区域（如`us-central1`）。该区域必须支持所选模型。
+- **Vertex AI 区域 (`vertexRegion`)**：指定Vertex AI服务所在的地理区域（如`us-central1`或`global`）。该区域必须支持所选模型。`global`区域提供了一个统一的端点来访问支持的模型。
 - **认证方式**：使用Google Cloud的服务账户密钥文件进行认证。该密钥文件通常以JSON格式提供，并通过环境变量或配置文件加载。代码中通过`@anthropic-ai/vertex-sdk`的`AnthropicVertex`客户端自动处理Google Cloud的认证流程。
 - **可选参数**：
   - `geminiApiKey`：如果需要直接访问标准Gemini API（非Vertex托管），可提供API密钥。
@@ -36,8 +44,8 @@
 这些配置通过`ApiConfiguration`对象传递给`buildApiHandler`函数，最终由`VertexHandler`使用。
 
 **Section sources**
-- [vertex.ts](file://src/core/api/providers/vertex.ts#L1-L278)
-- [index.ts](file://src/core/api/index.ts#L390-L419)
+- [vertex.ts](file://src/core/api/providers/vertex.ts#L18-L277) - *更新于最近提交*
+- [index.ts](file://src/core/api/index.ts#L386-L415) - *更新于最近提交*
 
 ## 实现细节
 Cline通过`VertexHandler`类与Google Cloud SDK进行交互，其实现细节如下：
@@ -49,8 +57,8 @@ Cline通过`VertexHandler`类与Google Cloud SDK进行交互，其实现细节�
 API端点的使用通过SDK封装，开发者无需直接构造HTTP请求。例如，`createMessage`方法会根据模型ID调用相应的SDK方法（`generateContentStream`用于Gemini，`beta.messages.create`用于Claude），并处理流式响应。
 
 **Section sources**
-- [vertex.ts](file://src/core/api/providers/vertex.ts#L1-L278)
-- [gemini.ts](file://src/core/api/providers/gemini.ts#L1-L472)
+- [vertex.ts](file://src/core/api/providers/vertex.ts#L18-L277) - *更新于最近提交*
+- [gemini.ts](file://src/core/api/providers/gemini.ts#L1-L472) - *更新于最近提交*
 
 ## 支持的模型列表
 Cline通过`@shared/api`中的`vertexModels`常量定义了对Vertex AI上可用模型的支持。主要模型包括：
@@ -63,14 +71,15 @@ Cline通过`@shared/api`中的`vertexModels`常量定义了对Vertex AI上可用
 - **Google Gemini 系列**：
   - `gemini-2.5-pro`
   - `gemini-2.5-flash`
+  - `gemini-2.5-flash-lite-preview-06-17`
   - `gemini-1.5-flash-002`
   - `gemini-1.5-pro-002`
 
 在Cline中使用这些模型时，用户只需在配置中指定相应的`apiModelId`。`VertexHandler`的`getModel`方法会根据配置的ID查找模型信息，若未指定则使用默认模型`claude-sonnet-4@20250514`。
 
 **Section sources**
-- [api.ts](file://src/shared/api.ts#L590-L789)
-- [vertex.ts](file://src/core/api/providers/vertex.ts#L1-L278)
+- [api.ts](file://src/shared/api.ts#L598-L908) - *更新于最近提交*
+- [vertex.ts](file://src/core/api/providers/vertex.ts#L18-L277) - *更新于最近提交*
 
 ## 代码示例：createChatCompletion 内部调用流程
 `createChatCompletion`方法的内部调用流程在`VertexHandler`的`createMessage`方法中实现。以下是其核心流程：
@@ -103,10 +112,10 @@ I --> M
 ```
 
 **Diagram sources**
-- [vertex.ts](file://src/core/api/providers/vertex.ts#L1-L278)
+- [vertex.ts](file://src/core/api/providers/vertex.ts#L18-L277) - *更新于最近提交*
 
 **Section sources**
-- [vertex.ts](file://src/core/api/providers/vertex.ts#L1-L278)
+- [vertex.ts](file://src/core/api/providers/vertex.ts#L18-L277) - *更新于最近提交*
 
 ## 统一API抽象层集成
 Cline通过`index.ts`中的`ApiHandler`接口和`buildApiHandler`工厂函数实现了统一的API抽象层。
@@ -144,8 +153,8 @@ VertexHandler --> AnthropicVertex : "使用"
 ```
 
 **Diagram sources**
-- [index.ts](file://src/core/api/index.ts#L1-L420)
-- [vertex.ts](file://src/core/api/providers/vertex.ts#L1-L278)
+- [index.ts](file://src/core/api/index.ts#L386-L415) - *更新于最近提交*
+- [vertex.ts](file://src/core/api/providers/vertex.ts#L18-L277) - *更新于最近提交*
 
 ## 错误处理与限制
 `VertexHandler`实现了健壮的错误处理机制：
@@ -154,13 +163,13 @@ VertexHandler --> AnthropicVertex : "使用"
 - **客户端创建错误**：在`ensureGeminiHandler`和`ensureAnthropicClient`中，使用`try-catch`捕获SDK初始化错误，并包装成更具可读性的错误信息。
 - **API调用错误**：`createMessage`方法上的`@withRetry`装饰器会自动处理可重试的错误（如网络超时、429速率限制），并进行指数退避重试。
 - **特定于Vertex AI的限制**：
-  - **区域限制**：并非所有模型在所有区域都可用，必须确保`vertexRegion`与所选模型兼容。
+  - **区域限制**：并非所有模型在所有区域都可用，必须确保`vertexRegion`与所选模型兼容。`global`区域仅支持特定的模型。
   - **认证依赖**：必须正确配置Google Cloud服务账户，否则所有API调用都会失败。
   - **模型ID格式**：Vertex AI上的模型ID有特定格式（如`model-name@version`），必须严格匹配。
 
 **Section sources**
-- [vertex.ts](file://src/core/api/providers/vertex.ts#L1-L278)
-- [gemini.ts](file://src/core/api/providers/gemini.ts#L1-L472)
+- [vertex.ts](file://src/core/api/providers/vertex.ts#L18-L277) - *更新于最近提交*
+- [gemini.ts](file://src/core/api/providers/gemini.ts#L1-L472) - *更新于最近提交*
 
 ## 与标准Gemini API的区别
 尽管`VertexHandler`可以处理Gemini模型，但它与直接使用标准Gemini API有显著区别：
@@ -168,13 +177,13 @@ VertexHandler --> AnthropicVertex : "使用"
 - **认证方式**：Vertex AI集成使用Google Cloud项目和服务账户进行认证，而标准Gemini API通常使用简单的API密钥。
 - **客户端SDK**：Vertex AI使用`@anthropic-ai/vertex-sdk`和`@google/genai`的Vertex特定配置，而标准Gemini API可能使用更通用的`@google/generative-ai` SDK。
 - **功能范围**：`VertexHandler`是一个统一入口，既能访问Vertex托管的Gemini模型，也能访问Vertex托管的Anthropic Claude模型。相比之下，标准Gemini API仅限于Google的Gemini模型。
-- **配置参数**：Vertex AI需要`vertexProjectId`和`vertexRegion`，而标准Gemini API只需要`geminiApiKey`。
+- **配置参数**：Vertex AI需要`vertexProjectId`和`vertexRegion`，而标准Gemini API只需要`geminiApiKey`。Vertex AI的`vertexRegion`支持`global`选项，而标准Gemini API没有此概念。
 
 在Cline中，当`isVertex: true`时，`GeminiHandler`会使用Vertex AI的配置，从而实现了与标准Gemini API的区分。
 
 **Section sources**
-- [vertex.ts](file://src/core/api/providers/vertex.ts#L1-L278)
-- [gemini.ts](file://src/core/api/providers/gemini.ts#L1-L472)
+- [vertex.ts](file://src/core/api/providers/vertex.ts#L18-L277) - *更新于最近提交*
+- [gemini.ts](file://src/core/api/providers/gemini.ts#L1-L472) - *更新于最近提交*
 
 ## 结论
 Cline对Google Vertex AI API的集成提供了一个强大且灵活的接口，支持多种先进的语言模型。通过清晰的配置、统一的API抽象层和健壮的错误处理，开发者可以轻松地在项目中利用Vertex AI的强大功能。`VertexHandler`的设计巧妙地桥接了Gemini和Claude模型，并通过`buildApiHandler`与整个系统无缝集成，体现了良好的架构设计。

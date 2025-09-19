@@ -1,3 +1,4 @@
+<docs>
 # API参考
 
 <cite>
@@ -44,7 +45,17 @@
 - [claude-code.ts](file://src/core/api/providers/claude-code.ts)
 - [qwen-code.ts](file://src/core/api/providers/qwen-code.ts)
 - [cline.ts](file://src/core/api/providers/cline.ts)
+- [refreshBasetenModels.ts](file://src/core/controller/models/refreshBasetenModels.ts) - *更新了Baseten模型的动态获取功能*
+- [baseten.ts](file://src/core/api/providers/baseten.ts) - *更新了Baseten提供者的实现*
+- [models.proto](file://proto/cline/models.proto) - *更新了模型服务定义*
 </cite>
+
+## 更新摘要
+**已做更改**  
+- 更新了**LLM API**章节中关于**Baseten**提供者的配置说明，以反映动态获取模型列表的新功能
+- 在**ModelsService**中添加了`refreshBasetenModels`方法的详细说明
+- 修正了Baseten模型支持功能的描述，明确其支持工具调用
+- 更新了相关文件的引用来源，以包含最新的代码文件
 
 ## 目录
 1. [gRPC API](#grpc-api)
@@ -208,10 +219,11 @@ Cline通过gRPC协议暴露了一系列服务，用于与核心功能进行交�
 - `SapAiCoreModelsResponse`: SAP AI Core模型响应，包含部署列表和编排可用性。
 
 **调用上下文：**
-此服务是模型选择和配置的核心。`updateApiConfigurationProto`用于持久化用户的API密钥和模型偏好设置，`refresh*Models`系列方法用于动态获取各提供商的最新模型列表。
+此服务是模型选择和配置的核心。`updateApiConfigurationProto`用于持久化用户的API密钥和模型偏好设置，`refresh*Models`系列方法用于动态获取各提供商的最新模型列表。`refreshBasetenModels`方法现在支持通过API动态获取Baseten模型列表，并在失败时回退到静态模型或缓存模型。
 
 **Section sources**
 - [models.proto](file://proto/cline/models.proto#L15-L349)
+- [refreshBasetenModels.ts](file://src/core/controller/models/refreshBasetenModels.ts#L1-L252) - *实现了Baseten模型的动态获取和缓存机制*
 
 ### TaskService
 
@@ -420,6 +432,25 @@ const config: ModelsApiConfiguration = {
 **Section sources**
 - [huggingface.ts](file://src/core/api/providers/huggingface.ts)
 
+#### Baseten
+- **API密钥**: `baseten_api_key`
+- **基础URL**: 默认为 `https://inference.baseten.co/v1`
+- **特性**: 支持通过OpenAI兼容API访问Baseten托管的模型，支持动态获取模型列表和缓存机制。模型支持工具调用（tools）。
+- **限制**: 需要Baseten账户和有效的API密钥。
+
+```typescript
+// 示例：配置Baseten
+const config: ModelsApiConfiguration = {
+  baseten_api_key: "your-baseten-api-key",
+  act_mode_api_provider: ApiProvider.BASETEN,
+  act_mode_api_model_id: "your-model-id"
+};
+```
+
+**Section sources**
+- [baseten.ts](file://src/core/api/providers/baseten.ts#L1-L161) - *实现了Baseten API处理程序，支持流式响应和工具调用*
+- [refreshBasetenModels.ts](file://src/core/controller/models/refreshBasetenModels.ts#L1-L252) - *实现了Baseten模型的动态获取、错误处理和缓存回退机制*
+
 #### 其他提供商
 Cline还支持以下提供商，配置方式类似：
 - **Doubao (豆包)**: `doubao_api_key`
@@ -428,7 +459,6 @@ Cline还支持以下提供商，配置方式类似：
 - **Z.AI**: `zai_api_key`
 - **Nebius AI**: `nebius_api_key`
 - **Fireworks AI**: `fireworks_api_key`
-- **Baseten**: `baseten_api_key`
 - **Cerebras**: `cerebras_api_key`
 - **Huawei Cloud MaaS**: `huawei_cloud_maas_api_key`
 - **SambaNova**: `sambanova_api_key`
@@ -458,7 +488,6 @@ Cline还支持以下提供商，配置方式类似：
 - [zai.ts](file://src/core/api/providers/zai.ts)
 - [nebius.ts](file://src/core/api/providers/nebius.ts)
 - [fireworks.ts](file://src/core/api/providers/fireworks.ts)
-- [baseten.ts](file://src/core/api/providers/baseten.ts)
 - [cerebras.ts](file://src/core/api/providers/cerebras.ts)
 - [huawei-cloud-maas.ts](file://src/core/api/providers/huawei-cloud-maas.ts)
 - [sambanova.ts](file://src/core/api/providers/sambanova.ts)
@@ -545,14 +574,4 @@ Cline的API在发生错误时会返回结构化的错误信息。gRPC服务通�
 
 ## 最佳实践
 
-1.  **安全保管API密钥**: 所有API密钥都应通过`ModelsService.updateApiConfigurationProto`进行配置，避免在代码或日志中硬编码。
-2.  **使用流式API**: 对于`UiService.subscribeToPartialMessage`等流式RPC，使用流式处理来实时更新UI，提供更好的用户体验。
-3.  **处理gRPC错误**: 在调用gRPC方法时，始终处理可能的错误状态码，并向用户提供有意义的错误信息。
-4.  **管理MCP服务器**: 定期通过`refreshMcpMarketplace`检查MCP市场的更新，并谨慎批准新的工具，以保障安全。
-5.  **监控信用额度**: 使用`AccountService.getUserCredits`监控信用额度使用情况，避免因额度不足导致服务中断。
-6.  **选择合适的模型**: 根据任务需求（速度、成本、能力）在Plan模式和Act模式中选择合适的LLM提供商和模型。
-7.  **利用缓存**: 对于支持Prompt Caching的模型（如Anthropic），设计系统提示（System Prompt）以利用缓存，降低延迟和成本。
-8.  **异步操作**: 对于长时间运行的任务（如`newTask`），使用`TaskService`的异步方法，并通过订阅消息来跟踪进度。
-
-**Section sources**
-- 本文档所有相关文件
+1.  **安全保管API密钥**:

@@ -12,7 +12,16 @@
 - [api-configuration-conversion.ts](file://src/shared/proto-conversions/models/api-configuration-conversion.ts)
 - [validate.ts](file://webview-ui/src/utils/validate.ts)
 - [ApiOptions.tsx](file://webview-ui/src/components/settings/ApiOptions.tsx)
+- [baseten.ts](file://src/core/api/providers/baseten.ts) - *新增于提交 e9c8f678228a333a6cfc69e7bd0e06a5f25350f8*
+- [baseten.mdx](file://docs/provider-config/baseten.mdx) - *新增于提交 e9c8f678228a333a6cfc69e7bd0e06a5f25350f8*
 </cite>
+
+## 更新摘要
+**已做更改**   
+- 在“支持的LLM提供商列表”中新增了Baseten提供商的详细说明。
+- 新增了“Baseten”章节，详细描述其配置、模型支持、功能特性及实现细节。
+- 更新了“提供商配置与实现细节”部分的结构，以包含Baseten。
+- 所有文件引用和内容均已更新为中文，并符合语言转换规则。
 
 ## 目录
 1. [支持的LLM提供商列表](#支持的llm提供商列表)
@@ -24,6 +33,7 @@
    3. [Ollama](#ollama)
    4. [Google Gemini](#google-gemini)
    5. [GCP Vertex AI](#gcp-vertex-ai)
+   6. [Baseten](#baseten)
 
 ## 支持的LLM提供商列表
 
@@ -34,6 +44,7 @@ Cline集成了多个大型语言模型（LLM）提供商，为用户提供多样
 - **Ollama**: 支持本地运行的开源模型，允许用户在本地环境中部署和使用LLM。
 - **Google Gemini**: 集成Google的Gemini模型，提供强大的多模态能力。
 - **GCP Vertex AI**: 通过Vertex AI平台访问Google的AI服务，包括Gemini和Claude模型。
+- **Baseten**: 提供前沿的开源模型API，支持DeepSeek、Meta Llama 4、Qwen等模型，具备企业级性能和可靠性。
 - **其他提供商**: 还包括OpenRouter、Bedrock、LM Studio、DeepSeek、Requesty、Fireworks、Together、Qwen、Doubao、Mistral、VS Code LM、Cline、LiteLLM、Moonshot、Hugging Face、Nebius、AskSage、Sambanova、Cerebras、Groq、Baseten、SAP AI Core、Huawei Cloud MaaS、Dify、Vercel AI Gateway、Z AI、X AI等。
 
 这些提供商的配置和使用方法在后续章节中详细说明。
@@ -147,3 +158,26 @@ GCP Vertex AI提供商通过`VertexHandler`类实现，支持通过Vertex AI平�
 
 **Section sources**
 - [vertex.ts](file://src/core/api/providers/vertex.ts#L0-L278)
+
+### Baseten
+
+Baseten提供商通过`BasetenHandler`类实现，支持前沿的开源模型API，具备企业级性能和可靠性。其主要特性包括：
+
+- **API密钥**: 环境变量名为`CLINE_BASETEN_API_KEY`。
+- **基础URL**: 固定为`https://inference.baseten.co/v1`，不支持自定义。
+- **模型支持**: 支持多种前沿模型，包括：
+  - **推理模型**: `deepseek-ai/DeepSeek-R1`、`deepseek-ai/DeepSeek-V3.1`等。
+  - **旗舰模型**: `openai/gpt-oss-120b`、`moonshotai/Kimi-K2-Instruct`等。
+  - **Meta Llama 4系列**: `meta-llama/Llama-4-Maverick-17B-128E-Instruct`、`meta-llama/Llama-4-Scout-17B-16E-Instruct`。
+  - **编码专家**: `Qwen/Qwen3-Coder-480B-A35B-Instruct`。
+- **请求参数**: 使用OpenAI兼容的API格式，通过`convertToOpenAiMessages`函数转换消息格式，`max_tokens`限制输出长度。
+- **响应解析**: 解析流式响应，提取文本、推理内容和使用情况。支持`reasoning`字段用于推理模型的逐步思考过程。
+- **工具调用**: 所有Baseten模型均支持工具调用和结构化输出，通过`supportsTools`方法判断。
+- **动态模型获取**: Cline自动从Baseten获取最新的模型列表，确保用户可访问新发布的模型。
+
+**Section sources**
+- [baseten.ts](file://src/core/api/providers/baseten.ts#L16-L159)
+- [baseten.mdx](file://docs/provider-config/baseten.mdx)
+- [cost.ts](file://src/utils/cost.ts#L89-L111)
+- [openai-format.ts](file://src/core/api/transform/openai-format.ts#L3-L150)
+- [api.ts](file://src/shared/api.ts#L3278-L3402)

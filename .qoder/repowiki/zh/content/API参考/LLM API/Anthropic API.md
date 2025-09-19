@@ -2,9 +2,9 @@
 
 <cite>
 **本文档中引用的文件**  
-- [anthropic.ts](file://src/core/api/providers/anthropic.ts)
-- [index.ts](file://src/core/api/index.ts)
-- [api.ts](file://src/shared/api.ts)
+- [anthropic.ts](file://src/core/api/providers/anthropic.ts) - *已更新，包含扩展思考和缓存控制逻辑*
+- [index.ts](file://src/core/api/index.ts) - *已更新，包含统一API处理程序工厂*
+- [api.ts](file://src/shared/api.ts) - *已更新，包含最新的模型定义和定价信息*
 </cite>
 
 ## 目录
@@ -25,7 +25,7 @@
 这些配置通过 `AnthropicHandlerOptions` 接口进行管理，并在创建 `AnthropicHandler` 实例时传入。该处理程序负责确保客户端正确初始化并使用提供的API密钥和基础URL。
 
 **Section sources**
-- [anthropic.ts](file://src/core/api/providers/anthropic.ts#L10-L25)
+- [anthropic.ts](file://src/core/api/providers/anthropic.ts#L10-L25) - *更新了构造函数和选项接口*
 
 ## 实现细节
 
@@ -44,7 +44,7 @@ Cline通过 `@anthropic-ai/sdk` SDK与Anthropic API进行交互。核心功能�
 API调用返回一个异步生成器（`ApiStream`），支持流式传输响应。流中的每个块根据其类型（如 `message_start`, `content_block_delta`, `text_delta` 等）进行处理，并生成相应的输出事件，包括文本流、推理过程和使用情况统计。
 
 **Section sources**
-- [anthropic.ts](file://src/core/api/providers/anthropic.ts#L50-L246)
+- [anthropic.ts](file://src/core/api/providers/anthropic.ts#L50-L246) - *更新了createMessage方法的完整实现*
 
 ## 支持的模型
 
@@ -64,7 +64,7 @@ Cline支持多种Anthropic模型，定义在 `anthropicModels` 常量中。以�
 模型选择通过 `getModel()` 方法实现，优先使用配置中指定的 `apiModelId`，若未指定则使用默认模型 `claude-sonnet-4-20250514`。
 
 **Section sources**
-- [api.ts](file://src/shared/api.ts#L300-L400)
+- [api.ts](file://src/shared/api.ts#L300-L400) - *更新了模型定义和定价信息*
 
 ## 代码示例
 
@@ -94,7 +94,7 @@ Handler-->>Client : 完成流式传输
 ```
 
 **Diagram sources**
-- [anthropic.ts](file://src/core/api/providers/anthropic.ts#L70-L246)
+- [anthropic.ts](file://src/core/api/providers/anthropic.ts#L70-L246) - *更新了流式处理逻辑*
 
 ## 统一API抽象层
 
@@ -111,7 +111,7 @@ Cline通过 `index.ts` 中的 `ApiHandler` 接口实现了统一的API抽象层�
 不同提供商的配置参数被统一映射到 `ApiConfiguration` 接口，使得切换提供商时无需修改核心逻辑。例如，`apiKey` 对应Anthropic，`openAiApiKey` 对应OpenAI，但在运行时通过模式（plan/act）和提供商类型自动选择。
 
 **Section sources**
-- [index.ts](file://src/core/api/index.ts#L100-L420)
+- [index.ts](file://src/core/api/index.ts#L100-L420) - *更新了工厂函数和构建逻辑*
 
 ## 错误处理与限制
 
@@ -128,5 +128,5 @@ Cline通过 `index.ts` 中的 `ApiHandler` 接口实现了统一的API抽象层�
 - **缓存断点**：系统和用户消息中的缓存断点用于优化性能，但需注意其对提示结构的影响。
 
 **Section sources**
-- [anthropic.ts](file://src/core/api/providers/anthropic.ts#L55-L70)
-- [anthropic.ts](file://src/core/api/providers/anthropic.ts#L120-L150)
+- [anthropic.ts](file://src/core/api/providers/anthropic.ts#L55-L70) - *更新了错误处理逻辑*
+- [anthropic.ts](file://src/core/api/providers/anthropic.ts#L120-L150) - *更新了扩展思考和缓存控制逻辑*

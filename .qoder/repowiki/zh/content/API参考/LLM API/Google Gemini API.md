@@ -2,11 +2,11 @@
 
 <cite>
 **本文档中引用的文件**  
-- [gemini.ts](file://src/core/api/providers/gemini.ts)
-- [index.ts](file://src/core/api/index.ts)
-- [api.ts](file://src/shared/api.ts)
-- [GeminiProvider.tsx](file://webview-ui/src/components/settings/providers/GeminiProvider.tsx)
-- [gemini-format.ts](file://src/core/api/transform/gemini-format.ts)
+- [gemini.ts](file://src/core/api/providers/gemini.ts) - *Gemini API 处理器实现*
+- [index.ts](file://src/core/api/index.ts) - *API 处理器工厂与统一接口*
+- [api.ts](file://src/shared/api.ts) - *Gemini 模型定义与定价信息*
+- [GeminiProvider.tsx](file://webview-ui/src/components/settings/providers/GeminiProvider.tsx) - *用户界面配置组件*
+- [gemini-format.ts](file://src/core/api/transform/gemini-format.ts) - *消息格式转换工具*
 </cite>
 
 ## 目录
@@ -27,8 +27,8 @@ Google Gemini API 的集成需要通过环境变量和配置选项进行设置�
 在配置界面中，用户可通过输入框设置 `geminiApiKey` 和 `geminiBaseUrl`。当使用 Vertex AI 时，系统会优先使用 `vertexProjectId` 和 `vertexRegion` 进行客户端初始化。
 
 **Section sources**
-- [GeminiProvider.tsx](file://webview-ui/src/components/settings/providers/GeminiProvider.tsx#L30-L73)
-- [gemini.ts](file://src/core/api/providers/gemini.ts#L55-L87)
+- [GeminiProvider.tsx](file://webview-ui/src/components/settings/providers/GeminiProvider.tsx#L30-L73) - *UI 配置输入字段*
+- [gemini.ts](file://src/core/api/providers/gemini.ts#L55-L87) - *客户端初始化逻辑*
 
 ## 实现细节
 
@@ -44,8 +44,8 @@ Gemini API 的调用通过 `@google/generative-ai` SDK 实现，封装在 `Gemin
 - 响应流通过 `generateContentStream` 方法处理，支持实时接收文本和推理内容。
 
 **Section sources**
-- [gemini.ts](file://src/core/api/providers/gemini.ts#L130-L174)
-- [gemini.ts](file://src/core/api/providers/gemini.ts#L55-L87)
+- [gemini.ts](file://src/core/api/providers/gemini.ts#L130-L174) - *生成配置与流式调用*
+- [gemini.ts](file://src/core/api/providers/gemini.ts#L55-L87) - *安全初始化逻辑*
 
 ## 支持的模型
 
@@ -60,8 +60,8 @@ Cline 支持多种 Gemini 模型，包括：
 这些模型在 `src/shared/api.ts` 中定义，包含详细的元信息，如最大 token 数、上下文窗口、是否支持图像和缓存等。部分模型支持分层定价（tiered pricing），根据输入 token 数量调整价格。
 
 **Section sources**
-- [api.ts](file://src/shared/api.ts#L919-L978)
-- [GeminiProvider.tsx](file://webview-ui/src/components/settings/providers/GeminiProvider.tsx#L30-L73)
+- [api.ts](file://src/shared/api.ts#L919-L978) - *Gemini 模型信息定义*
+- [GeminiProvider.tsx](file://webview-ui/src/components/settings/providers/GeminiProvider.tsx#L30-L73) - *模型选择 UI*
 
 ## 代码示例
 
@@ -93,7 +93,7 @@ Handler->>Handler : 记录性能指标
 ```
 
 **Diagram sources**
-- [gemini.ts](file://src/core/api/providers/gemini.ts#L130-L291)
+- [gemini.ts](file://src/core/api/providers/gemini.ts#L130-L291) - *createMessage 方法实现*
 
 ## 统一API抽象层
 
@@ -122,8 +122,8 @@ ApiHandler <|.. AnthropicHandler
 ```
 
 **Diagram sources**
-- [index.ts](file://src/core/api/index.ts#L400-L420)
-- [gemini.ts](file://src/core/api/providers/gemini.ts#L364-L415)
+- [index.ts](file://src/core/api/index.ts#L400-L420) - *buildApiHandler 工厂函数*
+- [gemini.ts](file://src/core/api/providers/gemini.ts#L364-L415) - *GeminiHandler 类定义*
 
 ## 错误处理与限制
 
@@ -140,5 +140,5 @@ Gemini 的流式响应格式包含 `text` 和 `reasoning` 两种类型：
 响应中还包含 `usageMetadata`，用于计算输入、输出和缓存 token 数量。
 
 **Section sources**
-- [gemini.ts](file://src/core/api/providers/gemini.ts#L226-L291)
-- [gemini-format.ts](file://src/core/api/transform/gemini-format.ts#L41-L82)
+- [gemini.ts](file://src/core/api/providers/gemini.ts#L226-L291) - *错误处理与重试逻辑*
+- [gemini-format.ts](file://src/core/api/transform/gemini-format.ts#L41-L82) - *响应格式转换*

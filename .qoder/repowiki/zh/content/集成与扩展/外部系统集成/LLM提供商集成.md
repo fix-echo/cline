@@ -10,7 +10,27 @@
 - [gemini-format.ts](file://src/core/api/transform/gemini-format.ts)
 - [stream.ts](file://src/core/api/transform/stream.ts)
 - [index.ts](file://src/core/api/index.ts)
+- [baseten.ts](file://src/core/api/providers/baseten.ts) - *更新为动态模型获取*
+- [refreshBasetenModels.ts](file://src/core/controller/models/refreshBasetenModels.ts) - *新增文件，用于动态刷新模型*
+- [baseten.mdx](file://docs/provider-config/baseten.mdx) - *新增文档，说明Baseten配置*
 </cite>
+
+## 更新摘要
+**已更改内容**  
+- 更新了“详细组件分析”中的“现有提供商实现模式分析”部分，以反映Baseten提供商现在使用动态模型获取。
+- 在“性能考量”部分添加了关于动态模型获取和缓存的新内容。
+- 新增“Baseten动态模型获取”部分，详细说明其架构和实现。
+- 更新了“故障排除指南”，以包含与动态模型获取相关的错误处理。
+
+**新增部分**  
+- **Baseten动态模型获取**：介绍新的动态模型获取机制及其优势。
+
+**已弃用/移除部分**  
+- 无
+
+**源跟踪系统更新**  
+- 添加了对新文件 `refreshBasetenModels.ts` 和文档 `baseten.mdx` 的引用。
+- 更新了 `baseten.ts` 的引用以反映其更新。
 
 ## 目录
 1. [简介](#简介)
@@ -21,7 +41,8 @@
 6. [依赖分析](#依赖分析)
 7. [性能考量](#性能考量)
 8. [故障排除指南](#故障排除指南)
-9. [结论](#结论)
+9. [Baseten动态模型获取](#baseten动态模型获取)
+10. [结论](#结论)
 
 ## 简介
 本文档旨在为将新的大型语言模型（LLM）提供商集成到Cline平台提供一份详尽的技术指南。我们将深入分析现有提供商（如Anthropic、OpenAI、Gemini）的实现模式，重点阐述它们如何继承和实现`BaseProvider`接口。文档将详细说明创建一个新的提供商类（例如`MyNewProvider.ts`）的完整步骤，涵盖认证处理（API密钥、OAuth、会话令牌等）、HTTP请求构建、流式响应处理以及错误码映射等关键环节。此外，我们还将探讨请求和响应的转换层，解释如何利用`openai-format.ts`或`gemini-format.ts`等文件将不同提供商的专有格式标准化为Cline内部统一的格式。最后，文档将提供一个完整的代码示例，并讨论集成过程中的性能优化策略。
@@ -36,11 +57,12 @@ A --> C[transform]
 B --> D[anthropic.ts]
 B --> E[openai.ts]
 B --> F[gemini.ts]
-B --> G[...其他提供商]
-C --> H[openai-format.ts]
-C --> I[gemini-format.ts]
-C --> J[...其他格式转换]
-C --> K[stream.ts]
+B --> G[baseten.ts]
+B --> H[...其他提供商]
+C --> I[openai-format.ts]
+C --> J[gemini-format.ts]
+C --> K[...其他格式转换]
+C --> L[stream.ts]
 ```
 
 **Diagram sources**
@@ -76,22 +98,25 @@ subgraph "具体提供商"
 D[AnthropicHandler]
 E[OpenAiHandler]
 F[GeminiHandler]
+G[BasetenHandler]
 end
 subgraph "数据转换层"
-G[openai-format.ts]
-H[gemini-format.ts]
-I[stream.ts]
+H[openai-format.ts]
+I[gemini-format.ts]
+J[stream.ts]
 end
 A --> C
 B --> C
 C --> D
 C --> E
 C --> F
-D --> G
-E --> G
-F --> H
-G --> I
-H --> I
+C --> G
+D --> H
+E --> H
+F --> I
+G --> H
+H --> J
+I --> J
 ```
 
 **Diagram sources**
@@ -142,9 +167,19 @@ class GeminiHandler {
 +getModel() : { id : GeminiModelId; info : ModelInfo }
 +calculateCost(...) : number | undefined
 }
+class BasetenHandler {
+-options : BasetenHandlerOptions
+-client : OpenAI | undefined
++constructor(options : BasetenHandlerOptions)
+-ensureClient() : OpenAI
++createMessage(systemPrompt : string, messages : MessageParam[]) : ApiStream
++getModel() : { id : BasetenModelId; info : ModelInfo }
++supportsTools() : boolean
+}
 ApiHandler <|-- AnthropicHandler
 ApiHandler <|-- OpenAiHandler
 ApiHandler <|-- GeminiHandler
+ApiHandler <|-- BasetenHandler
 ```
 
 **Diagram sources**
@@ -152,6 +187,7 @@ ApiHandler <|-- GeminiHandler
 - [anthropic.ts](file://src/core/api/providers/anthropic.ts#L1-L247)
 - [openai.ts](file://src/core/api/providers/openai.ts#L1-L141)
 - [gemini.ts](file://src/core/api/providers/gemini.ts#L1-L473)
+- [baseten.ts](file://src/core/api/providers/baseten.ts#L1-L160)
 
 ### 创建新的提供商类
 要创建一个新的提供商类（例如`MyNewProvider.ts`），请遵循以下步骤：
@@ -184,14 +220,17 @@ flowchart LR
 A[Cline内部消息<br/>(Anthropic格式)] --> B{转换层}
 B --> C[OpenAI API]
 B --> D[Gemini API]
-B --> E[新提供商 API]
-C --> F[OpenAI 响应流]
-D --> G[Gemini 响应流]
-E --> H[新提供商响应流]
-F --> I[解析为<br/>ApiStreamChunk]
-G --> I
-H --> I
-I --> J[Cline核心逻辑]
+B --> E[Baseten API]
+B --> F[新提供商 API]
+C --> G[OpenAI 响应流]
+D --> H[Gemini 响应流]
+E --> I[Baseten 响应流]
+F --> J[新提供商响应流]
+G --> K[解析为<br/>ApiStreamChunk]
+H --> K
+I --> K
+J --> K
+K --> L[Cline核心逻辑]
 ```
 
 **Diagram sources**
@@ -238,6 +277,11 @@ A --> F[@/services/telemetry]
 *   **成本计算**：像`GeminiHandler`中的`calculateCost`方法一样，实现成本估算功能，以便向用户透明地展示API调用费用。这需要准确获取输入/输出token数以及提供商的定价信息。
 *   **流式处理**：优先使用流式API，以便在生成响应的同时向用户展示内容，提升用户体验。避免使用同步的、阻塞式的API调用。
 *   **缓存**：如果提供商支持请求/响应缓存（如Gemini的隐式缓存），应充分利用以减少延迟和成本。
+*   **动态模型获取**：对于像Baseten这样的提供商，动态获取模型列表可以确保用户始终访问最新的模型。该过程包括：
+    *   **API调用**：使用提供商的API密钥从`https://inference.baseten.co/v1/models`端点获取最新模型列表。
+    *   **超时**：设置10秒的超时以防止请求挂起。
+    *   **缓存**：将获取的模型列表缓存到磁盘，以便在网络问题或API密钥缺失时使用。
+    *   **回退**：如果动态获取失败，则回退到静态模型列表或缓存的模型列表。
 
 ## 故障排除指南
 在集成过程中可能遇到的常见问题及解决方案：
@@ -247,11 +291,70 @@ A --> F[@/services/telemetry]
 *   **格式转换错误**：仔细检查`convertTo...`函数的实现，确保消息的`role`和`content`被正确映射。使用单元测试验证转换逻辑。
 *   **流式解析错误**：确保`createMessage`方法能正确处理所有类型的响应块，并在`yield`后正确关闭流。
 *   **依赖缺失**：运行`npm install`安装所有必需的外部SDK。
+*   **动态模型获取失败**：检查Baseten API密钥是否有效。查看控制台日志以获取具体的错误信息，例如：
+    *   `Invalid Baseten API key`：API密钥无效或格式错误。
+    *   `Access forbidden`：API密钥权限不足。
+    *   `Rate limit exceeded`：请求过于频繁。
+    *   `Request timeout`：网络连接问题。
 
 **Section sources**
 - [anthropic.ts](file://src/core/api/providers/anthropic.ts#L1-L247)
 - [openai.ts](file://src/core/api/providers/openai.ts#L1-L141)
 - [gemini.ts](file://src/core/api/providers/gemini.ts#L1-L473)
+- [baseten.ts](file://src/core/api/providers/baseten.ts#L1-L160)
+- [refreshBasetenModels.ts](file://src/core/controller/models/refreshBasetenModels.ts#L1-L210)
+
+## Baseten动态模型获取
+Baseten提供商现在通过API动态获取模型列表，取代了原有的静态配置模式。这一更新确保了用户能够访问Baseten平台上最新发布的模型，而无需等待Cline的版本更新。
+
+### 架构
+动态模型获取由`refreshBasetenModels`函数驱动，该函数在`src/core/controller/models/`目录中实现。其工作流程如下：
+
+1.  **触发**：当用户打开设置面板或Cline初始化时，会调用`refreshBasetenModels`。
+2.  **API调用**：函数使用用户的Baseten API密钥向`https://inference.baseten.co/v1/models`发起GET请求。
+3.  **处理响应**：解析API响应，提取模型ID、最大完成token数、上下文长度和定价等信息。
+4.  **缓存**：将获取的模型列表写入磁盘缓存文件（`baseten_models.json`）。
+5.  **状态更新**：将模型列表发送到前端UI，更新模型选择器。
+
+### 实现细节
+`BasetenHandler`的`getModel`方法现在优先使用动态获取的模型信息。其优先级顺序为：
+1.  首先，使用`basetenModelId`和`basetenModelInfo`（由动态获取提供）。
+2.  其次，使用`basetenModelId`和静态模型信息（`basetenModels`）。
+3.  最后，使用默认模型ID。
+
+```mermaid
+sequenceDiagram
+participant UI as Webview UI
+participant Controller as Controller
+participant API as Baseten API
+participant Disk as Disk Cache
+UI->>Controller : 请求刷新Baseten模型
+Controller->>API : GET /v1/models (带API密钥)
+alt API调用成功
+API-->>Controller : 返回模型列表
+Controller->>Disk : 写入缓存文件
+Controller-->>UI : 发送模型列表
+else API调用失败
+Controller->>Disk : 读取缓存文件
+alt 缓存存在
+Disk-->>Controller : 返回缓存的模型
+Controller-->>UI : 发送模型列表
+else 缓存不存在
+Controller->>Controller : 使用静态模型列表
+Controller-->>UI : 发送静态模型列表
+end
+end
+```
+
+**Diagram sources**
+- [refreshBasetenModels.ts](file://src/core/controller/models/refreshBasetenModels.ts#L1-L210)
+- [baseten.ts](file://src/core/api/providers/baseten.ts#L1-L160)
+- [BasetenModelPicker.tsx](file://webview-ui/src/components/settings/BasetenModelPicker.tsx#L1-L300)
+
+**Section sources**
+- [refreshBasetenModels.ts](file://src/core/controller/models/refreshBasetenModels.ts#L1-L210)
+- [baseten.ts](file://src/core/api/providers/baseten.ts#L1-L160)
+- [baseten.mdx](file://docs/provider-config/baseten.mdx#L1-L116)
 
 ## 结论
-通过遵循本文档中描述的模式和步骤，可以高效地将新的LLM提供商集成到Cline平台。关键在于严格遵守`ApiHandler`接口规范，正确实现`ensureClient`和`createMessage`方法，并利用`transform`目录下的工具进行数据格式转换。同时，务必考虑认证、错误处理、性能优化和成本计算等非功能性需求，以确保集成的稳定性和用户体验。
+通过遵循本文档中描述的模式和步骤，可以高效地将新的LLM提供商集成到Cline平台。关键在于严格遵守`ApiHandler`接口规范，正确实现`ensureClient`和`createMessage`方法，并利用`transform`目录下的工具进行数据格式转换。同时，务必考虑认证、错误处理、性能优化和成本计算等非功能性需求，以确保集成的稳定性和用户体验。Baseten提供商的动态模型获取更新是一个重要的演进，它展示了Cline如何适应快速变化的LLM生态系统，为用户提供最新的模型选择。
